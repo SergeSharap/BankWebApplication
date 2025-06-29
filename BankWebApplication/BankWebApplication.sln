@@ -1,9 +1,16 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36212.18 d17.14
+VisualStudioVersion = 17.14.36212.18
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BankWebApplication", "BankWebApplication\BankWebApplication.csproj", "{FE36D8B6-EB72-4B4A-BE20-CA1EAD549167}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionService.API", "TransactionService.API\TransactionService.API.csproj", "{FE36D8B6-EB72-4B4A-BE20-CA1EAD549167}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionService.Domain", "TransactionService.Domain\TransactionService.Domain.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionService.Application", "TransactionService.Application\TransactionService.Application.csproj", "{BD232DD9-A497-4FDA-8E2E-77D3003C8C96}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionService.Infrastructure", "TransactionService.Infrastructure\TransactionService.Infrastructure.csproj", "{CE28692A-21A7-419F-B111-61B16644E7BC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionService.Tests", "TransactionService.Tests\TransactionService.Tests.csproj", "{324CAE6B-29EB-4B6E-A708-610194BF95FE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +22,22 @@ Global
 		{FE36D8B6-EB72-4B4A-BE20-CA1EAD549167}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE36D8B6-EB72-4B4A-BE20-CA1EAD549167}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE36D8B6-EB72-4B4A-BE20-CA1EAD549167}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD232DD9-A497-4FDA-8E2E-77D3003C8C96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD232DD9-A497-4FDA-8E2E-77D3003C8C96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD232DD9-A497-4FDA-8E2E-77D3003C8C96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD232DD9-A497-4FDA-8E2E-77D3003C8C96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE28692A-21A7-419F-B111-61B16644E7BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE28692A-21A7-419F-B111-61B16644E7BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE28692A-21A7-419F-B111-61B16644E7BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE28692A-21A7-419F-B111-61B16644E7BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{324CAE6B-29EB-4B6E-A708-610194BF95FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{324CAE6B-29EB-4B6E-A708-610194BF95FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{324CAE6B-29EB-4B6E-A708-610194BF95FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{324CAE6B-29EB-4B6E-A708-610194BF95FE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

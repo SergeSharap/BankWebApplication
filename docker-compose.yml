@@ -1,0 +1,38 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU18-ubuntu-20.04
+    container_name: bank-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Passw0rd
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - bank-network
+    restart: unless-stopped
+
+  bank-api:
+    build:
+      context: ./BankWebApplication
+      dockerfile: TransactionService.API/Dockerfile
+    container_name: bank-api
+    ports:
+      - "5000:8080"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=BankWebApplication;User Id=sa;Password=YourStrong@Passw0rd;Encrypt=false
+    depends_on:
+      - sqlserver
+    networks:
+      - bank-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+
+networks:
+  bank-network:
+    driver: bridge
