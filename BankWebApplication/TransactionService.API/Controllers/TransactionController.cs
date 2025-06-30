@@ -10,16 +10,13 @@ namespace TransactionService.API.Controllers;
 public class TransactionController : ControllerBase
 {
     private readonly ITransactionApplicationService _transactionService;
-    private readonly ILogger<TransactionController> _logger;
     private readonly IValidator<TransactionRequest> _validator;
 
     public TransactionController(
-        ITransactionApplicationService transactionService, 
-        ILogger<TransactionController> logger,
+        ITransactionApplicationService transactionService,
         IValidator<TransactionRequest> validator)
     {
         _transactionService = transactionService;
-        _logger = logger;
         _validator = validator;
     }
 
