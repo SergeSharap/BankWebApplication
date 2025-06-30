@@ -1,4 +1,4 @@
-# Bank Web Application
+# Тестовое задание: Web API для финансовых транзакций
 
 ## Запуск приложения
 
@@ -32,7 +32,6 @@ dotnet run
 
 MIT License
 
-# Тестовое задание: Web API для финансовых транзакций
 
 ## Описание
 
@@ -47,8 +46,6 @@ public interface ITransaction
     decimal Amount { get; }
 }
 ```
-
-## Задача
 
 Создайте реализации этого интерфейса:
 - **CreditTransaction** (зачисление средств клиенту)
