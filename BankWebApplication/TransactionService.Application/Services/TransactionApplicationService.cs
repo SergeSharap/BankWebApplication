@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using TransactionService.Application.DTOs;
 using TransactionService.Domain.Entities;
+using TransactionService.Domain.Exceptions;
 using TransactionService.Domain.Interfaces;
 
 namespace TransactionService.Application.Services;
@@ -32,28 +33,36 @@ public class TransactionApplicationService : ITransactionApplicationService
             return await CreateIdempotentResponse(existingTransaction);
         }
 
-        return await _transactionRepository.ExecuteInTransactionAsync(async () =>
+        try
         {
-            var transaction = new CreditTransaction
+            return await _transactionRepository.ExecuteInTransactionAsync(async () =>
             {
-                Id = request.Id,
-                ClientId = request.ClientId,
-                Amount = request.Amount,
-                DateTime = _timeProvider.UtcNow
-            };
+                var transaction = new CreditTransaction
+                {
+                    Id = request.Id,
+                    ClientId = request.ClientId,
+                    Amount = request.Amount,
+                    DateTime = _timeProvider.UtcNow
+                };
 
-            await _transactionRepository.AddTransactionAsync(transaction);
+                await _transactionRepository.AddTransactionAsync(transaction);
 
-            var newBalance = await _balanceService.AdjustBalanceAsync(request.ClientId, request.Amount);
+                var newBalance = await _balanceService.AdjustBalanceAsync(request.ClientId, request.Amount);
 
-            _logger.LogInformation("Credit transaction {TransactionId} processed successfully. New balance: {Balance}", request.Id, newBalance);
+                _logger.LogInformation("Credit transaction {TransactionId} processed successfully. New balance: {Balance}", request.Id, newBalance);
 
-            return new TransactionResponse
-            {
-                InsertDateTime = transaction.DateTime,
-                ClientBalance = newBalance
-            };
-        }, System.Data.IsolationLevel.Serializable);
+                return new TransactionResponse
+                {
+                    InsertDateTime = transaction.DateTime,
+                    ClientBalance = newBalance
+                };
+            }, System.Data.IsolationLevel.Serializable);
+        }
+        catch (DuplicateTransactionException)
+        {
+            var existing = await _transactionRepository.GetTransactionByIdAsync<Transaction>(request.Id);
+            return await CreateIdempotentResponse(existing);
+        }
     }
 
     public async Task<TransactionResponse> DebitAsync(TransactionRequest request)
@@ -64,36 +73,44 @@ public class TransactionApplicationService : ITransactionApplicationService
             return await CreateIdempotentResponse(existingTransaction);
         }
 
-        return await _transactionRepository.ExecuteInTransactionAsync(async () =>
+        try
         {
-            var hasFunds = await _balanceService.HasSufficientFunds(request.ClientId, request.Amount);
-            if (!hasFunds)
+            return await _transactionRepository.ExecuteInTransactionAsync(async () =>
             {
-                var currentBalance = await _balanceService.GetBalanceAsync(request.ClientId);
-                throw new InvalidOperationException(
-                    $"Insufficient funds for debit operation. Current balance: {currentBalance}, amount requested: {request.Amount}");
-            }
+                var hasFunds = await _balanceService.HasSufficientFunds(request.ClientId, request.Amount);
+                if (!hasFunds)
+                {
+                    var currentBalance = await _balanceService.GetBalanceAsync(request.ClientId);
+                    throw new InvalidOperationException(
+                        $"Insufficient funds for debit operation. Current balance: {currentBalance}, amount requested: {request.Amount}");
+                }
 
-            var transaction = new DebitTransaction
-            {
-                Id = request.Id,
-                ClientId = request.ClientId,
-                Amount = request.Amount,
-                DateTime = _timeProvider.UtcNow
-            };
+                var transaction = new DebitTransaction
+                {
+                    Id = request.Id,
+                    ClientId = request.ClientId,
+                    Amount = request.Amount,
+                    DateTime = _timeProvider.UtcNow
+                };
 
-            await _transactionRepository.AddTransactionAsync(transaction);
+                await _transactionRepository.AddTransactionAsync(transaction);
 
-            var newBalance = await _balanceService.AdjustBalanceAsync(request.ClientId, -request.Amount);
+                var newBalance = await _balanceService.AdjustBalanceAsync(request.ClientId, -request.Amount);
 
-            _logger.LogInformation("Debit transaction {TransactionId} processed successfully. New balance: {Balance}", request.Id, newBalance);
+                _logger.LogInformation("Debit transaction {TransactionId} processed successfully. New balance: {Balance}", request.Id, newBalance);
 
-            return new TransactionResponse
-            {
-                InsertDateTime = transaction.DateTime,
-                ClientBalance = newBalance
-            };
-        }, System.Data.IsolationLevel.Serializable);
+                return new TransactionResponse
+                {
+                    InsertDateTime = transaction.DateTime,
+                    ClientBalance = newBalance
+                };
+            }, System.Data.IsolationLevel.Serializable);
+        }
+        catch (DuplicateTransactionException)
+        {
+            var existing = await _transactionRepository.GetTransactionByIdAsync<Transaction>(request.Id);
+            return await CreateIdempotentResponse(existing);
+        }
     }
 
     public async Task<RevertResponse> RevertAsync(Guid transactionId)
@@ -102,61 +119,63 @@ public class TransactionApplicationService : ITransactionApplicationService
         var existingRevert = await _transactionRepository.GetRevertTransactionByRevertedIdAsync(transactionId);
         if (existingRevert is not null)
         {
-            _logger.LogInformation("Revert for transaction {TransactionId} already exists, returning existing result", transactionId);
-            var balance = await _balanceService.GetBalanceAsync(existingRevert.ClientId);
-            return new RevertResponse
-            {
-                RevertDateTime = existingRevert.DateTime,
-                ClientBalance = balance
-            };
+            return await CreateIdempotentRevertedResponse(existingRevert);
         }
 
-        return await _transactionRepository.ExecuteInTransactionAsync(async () =>
+        try
         {
-            var transactionToRevert = await _transactionRepository.GetTransactionByIdAsync<Transaction>(transactionId);
-            
-            if (transactionToRevert is null)
+            return await _transactionRepository.ExecuteInTransactionAsync(async () =>
             {
-                throw new KeyNotFoundException($"Transaction {transactionId} not found");
-            }
-            else if (transactionToRevert.Type == TransactionType.Revert)
-            {
-                throw new InvalidOperationException($"Transaction {transactionId} is already a revert transaction");
-            }
+                var transactionToRevert = await _transactionRepository.GetTransactionByIdAsync<Transaction>(transactionId);
 
-            // Check sufficient funds to revert credit transaction (when we need to debit money back)
-            if (transactionToRevert.Type == TransactionType.Credit)
-            {
-                var hasFunds = await _balanceService.HasSufficientFunds(transactionToRevert.ClientId, transactionToRevert.Amount);
-                if (!hasFunds)
+                if (transactionToRevert is null)
                 {
-                    var currentBalance = await _balanceService.GetBalanceAsync(transactionToRevert.ClientId);
-                    throw new InvalidOperationException(
-                        $"Insufficient funds to revert credit transaction. Current balance: {currentBalance}, amount to revert: {transactionToRevert.Amount}");
+                    throw new KeyNotFoundException($"Transaction {transactionId} not found");
                 }
-            }
+                else if (transactionToRevert.Type == TransactionType.Revert)
+                {
+                    throw new InvalidOperationException($"Transaction {transactionId} is already a revert transaction");
+                }
 
-            var revertTransaction = new RevertTransaction
-            {
-                Id = Guid.NewGuid(),
-                ClientId = transactionToRevert.ClientId,
-                Amount = transactionToRevert.Type == TransactionType.Credit ? -transactionToRevert.Amount : transactionToRevert.Amount,
-                DateTime = _timeProvider.UtcNow,
-                RevertedTransactionId = transactionId
-            };
+                // Check sufficient funds to revert credit transaction (when we need to debit money back)
+                if (transactionToRevert.Type == TransactionType.Credit)
+                {
+                    var hasFunds = await _balanceService.HasSufficientFunds(transactionToRevert.ClientId, transactionToRevert.Amount);
+                    if (!hasFunds)
+                    {
+                        var currentBalance = await _balanceService.GetBalanceAsync(transactionToRevert.ClientId);
+                        throw new InvalidOperationException(
+                            $"Insufficient funds to revert credit transaction. Current balance: {currentBalance}, amount to revert: {transactionToRevert.Amount}");
+                    }
+                }
 
-            await _transactionRepository.AddTransactionAsync(revertTransaction);
+                var revertTransaction = new RevertTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = transactionToRevert.ClientId,
+                    Amount = transactionToRevert.Type == TransactionType.Credit ? -transactionToRevert.Amount : transactionToRevert.Amount,
+                    DateTime = _timeProvider.UtcNow,
+                    RevertedTransactionId = transactionId
+                };
 
-            var newBalance = await _balanceService.AdjustBalanceAsync(transactionToRevert.ClientId, revertTransaction.Amount);
+                await _transactionRepository.AddTransactionAsync(revertTransaction);
 
-            _logger.LogInformation("Revert for transaction {TransactionId} processed successfully. New balance: {Balance}", transactionId, newBalance);
+                var newBalance = await _balanceService.AdjustBalanceAsync(transactionToRevert.ClientId, revertTransaction.Amount);
 
-            return new RevertResponse
-            {
-                RevertDateTime = revertTransaction.DateTime,
-                ClientBalance = newBalance
-            };
-        }, System.Data.IsolationLevel.Serializable);
+                _logger.LogInformation("Revert for transaction {TransactionId} processed successfully. New balance: {Balance}", transactionId, newBalance);
+
+                return new RevertResponse
+                {
+                    RevertDateTime = revertTransaction.DateTime,
+                    ClientBalance = newBalance
+                };
+            }, System.Data.IsolationLevel.Serializable);
+        }
+        catch (DuplicateTransactionException)
+        {
+            var existing = await _transactionRepository.GetRevertTransactionByRevertedIdAsync(transactionId);
+            return await CreateIdempotentRevertedResponse(existing);
+        }
     }
 
     public async Task<BalanceResponse> GetBalanceAsync(Guid clientId)
@@ -182,6 +201,17 @@ public class TransactionApplicationService : ITransactionApplicationService
         return new TransactionResponse
         {
             InsertDateTime = existingTransaction.DateTime,
+            ClientBalance = balance
+        };
+    }
+
+    private async Task<RevertResponse> CreateIdempotentRevertedResponse(RevertTransaction existingRevert)
+    {
+        _logger.LogInformation("Revert for transaction {TransactionId} already exists, returning existing result", existingRevert.RevertedTransactionId);
+        var balance = await _balanceService.GetBalanceAsync(existingRevert.ClientId);
+        return new RevertResponse
+        {
+            RevertDateTime = existingRevert.DateTime,
             ClientBalance = balance
         };
     }

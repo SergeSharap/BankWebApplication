@@ -53,8 +53,10 @@ public class BankDbContext : DbContext
                 .OnDelete(DeleteBehavior.NoAction)
                 .IsRequired(false);
             
-            // Index for querying by RevertedTransactionId (for idempotency check)
-            entity.HasIndex(e => e.RevertedTransactionId).HasDatabaseName("IX_RevertTransactions_RevertedTransactionId");
+            // Unique index for RevertedTransactionId to prevent multiple reverts of the same transaction
+            entity.HasIndex(e => e.RevertedTransactionId)
+                .HasDatabaseName("IX_RevertTransactions_RevertedTransactionId")
+                .IsUnique();
         });
     }
 } 

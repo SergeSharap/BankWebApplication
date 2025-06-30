@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using TransactionService.Domain.Entities;
+using TransactionService.Domain.Exceptions;
 using TransactionService.Domain.Interfaces;
 using TransactionService.Infrastructure.Data;
+using TransactionService.Infrastructure.Helpers;
 
 namespace TransactionService.Infrastructure.Repositories;
 
@@ -24,7 +26,14 @@ public class TransactionRepository : BaseRepository, ITransactionRepository
 
     public async Task AddTransactionAsync(Transaction transaction)
     {
-        _context.Transactions.Add(transaction);
-        await _context.SaveChangesAsync();
+        try
+        {
+            _context.Transactions.Add(transaction);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (SqlExceptionHelper.IsPkOrUniqueViolation(ex))
+        {
+            throw new DuplicateTransactionException(transaction.Id);
+        }
     }
 } 

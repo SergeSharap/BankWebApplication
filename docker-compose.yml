@@ -20,7 +20,6 @@ services:
     container_name: bank-api
     ports:
       - "5000:8080"
-      - "5001:443"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=BankWebApplication;User Id=sa;Password=YourStrong@Passw0rd;Encrypt=false
